@@ -677,6 +677,17 @@ class BaseDeviceAdaptor:
         return torch.ops._C_ascend.npu_sparse_attn_sharedkv
 
     @staticmethod
+    def get_dspark_sparse_flash_mla_metadata_op():
+        """Returns the metadata builder for DSpark bidirectional attention."""
+        return torch.ops._C_ascend.npu_sparse_flash_mla_metadata
+
+    @staticmethod
+    def get_dspark_sparse_flash_mla_op():
+        """Returns the SparseFlashMLA operator for DSpark."""
+
+        return torch.ops._C_ascend.npu_sparse_flash_mla
+
+    @staticmethod
     def get_dsa_sparse_attn_base_kwargs():
         """Returns base kwargs for sparse attention (extended by caller)."""
         return {}
@@ -1449,6 +1460,15 @@ class A5DeviceAdaptor(BaseDeviceAdaptor):
     @staticmethod
     def get_dsa_sparse_attn_op():
         return torch.ops._C_ascend.npu_kv_quant_sparse_attn_sharedkv
+
+    @staticmethod
+    def get_dspark_sparse_flash_mla_metadata_op():
+        # SparseFlashMLA does not expose the quantized-KV controls required by A5.
+        return None
+
+    @staticmethod
+    def get_dspark_sparse_flash_mla_op():
+        return None
 
     @staticmethod
     def get_dsa_sparse_attn_base_kwargs():
