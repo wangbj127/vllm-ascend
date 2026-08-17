@@ -867,7 +867,7 @@ class AscendDSAMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
                 ori_win_left=0,
                 ori_win_right=0,
                 layout_q="TND",
-                layout_kv="PA_ND",
+                layout_kv="PA_BBND",
                 has_ori_kv=True,
                 has_cmp_kv=False,
             )
@@ -1670,7 +1670,7 @@ class AscendDSAImpl(AttentionImplBase[Any]):
                 ori_win_left=0,
                 ori_win_right=0,
                 layout_q="TND",
-                layout_kv="PA_ND",
+                layout_kv="PA_BBND",
                 topk_value_mode=SPARSE_FLASH_MLA_TOPK_VALUE_MODE,
             )[0]
 
