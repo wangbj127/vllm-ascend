@@ -2394,7 +2394,7 @@ TORCH_LIBRARY_EXPAND(CONCAT(_C, _ascend), ops)
             "float softmax_scale=0, int cmp_ratio=1, int ori_mask_mode=4, int cmp_mask_mode=3, "
             "int ori_win_left=128, int ori_win_right=0, "
             "str layout_q=\"TND\", str layout_kv=\"PA_BBND\", "
-            "int topk_value_mode=0, bool return_softmax_lse=False"
+            "int topk_value_mode=1, bool return_softmax_lse=False"
         ") -> (Tensor out, Tensor softmax_lse)"
         );
     ops.impl("npu_sparse_flash_mla", torch::kPrivateUse1, &vllm_ascend::npu_sparse_flash_mla_npu);

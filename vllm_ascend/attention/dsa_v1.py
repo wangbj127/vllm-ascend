@@ -58,7 +58,7 @@ else:
 
 # The SAS and QLI metadata operators use a fixed 1024-element int32 layout.
 DSA_METADATA_BUFFER_SIZE = 1024
-SPARSE_FLASH_MLA_TOPK_VALUE_MODE = 0
+SPARSE_FLASH_MLA_TOPK_VALUE_MODE = 1
 
 _DSV4_DSA_OVERLAP_STREAM = None
 
@@ -251,19 +251,18 @@ def _aligned_dspark_index_width(window_size: int, block_size: int, alignment: in
 
 
 def build_dspark_swa_indices(
-    block_table: torch.Tensor,
     num_speculative_tokens: int,
     window_size: int,
-    block_size: int,
     query_start_loc: torch.Tensor,
     seq_lens: torch.Tensor,
     num_decode_tokens: int | None = None,
     index_width: int | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Build DSpark non-causal visible slot ids for a paged SWA cache.
+    """Build DSpark non-causal logical KV positions for a paged SWA cache.
 
     Each token in a draft block sees the trailing context window plus the
-    whole current draft block. Invalid/paddedrows get lens=0 and -1 slots.
+    whole current draft block. The SparseFlashMla kernel maps these logical
+    positions through the block table. Invalid/padded rows get -1 indices.
     """
     if index_width is None:
         index_width = _aligned_dspark_index_width(window_size, num_speculative_tokens)
@@ -286,21 +285,17 @@ def build_dspark_swa_indices(
     cols = torch.arange(index_width, device=start_pos.device)
     col_mask = cols[None, :] < visible_lens[:, None]
     pos = start_pos[:, None] + cols[None, :]
-    block_nums = pos // block_size
-    # Clamp to valid block-table columns so gather never goes OOB on the
-    # out-of-range columns (their results are discarded by col_mask anyway).
-    safe_nums = block_nums.clamp(min=0, max=int(block_table.shape[1]) - 1)
-    block_offsets = pos % block_size
-    block_ids = torch.gather(block_table, 1, safe_nums)
-    slot_ids = (block_ids * block_size + block_offsets).to(torch.int32)
-    slot_ids = slot_ids.where(col_mask, torch.full_like(slot_ids, -1))
+    logical_indices = pos.to(torch.int32)
+    logical_indices = logical_indices.where(col_mask, torch.full_like(logical_indices, -1))
 
-    per_token_slots = torch.repeat_interleave(slot_ids, query_lens, dim=0, output_size=num_decode_tokens).unsqueeze(1)
+    per_token_indices = torch.repeat_interleave(
+        logical_indices, query_lens, dim=0, output_size=num_decode_tokens
+    ).unsqueeze(1)
     per_token_lens = torch.repeat_interleave(
         visible_lens, query_lens, dim=0, output_size=num_decode_tokens
     ).unsqueeze(1)
 
-    return per_token_slots, per_token_lens
+    return per_token_indices, per_token_lens
 
 
 class AscendDSAMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
@@ -815,10 +810,8 @@ class AscendDSAMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
         if not common_attn_metadata.causal:
             assert self.speculative_config is not None
             dspark_swa_indices, dspark_swa_topk_lengths = build_dspark_swa_indices(
-                self.block_table[:num_reqs],
                 self.speculative_config.num_speculative_tokens,
                 self.model_config.hf_config.sliding_window,
-                self.block_size,
                 query_start_loc,
                 seq_lens,
                 self.num_actual_tokens,
