@@ -503,7 +503,7 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
                 )
             if pad_rows:
                 global_dspark_indices = F.pad(global_dspark_indices, (0, 0, 0, 0, 0, pad_rows), value=-1)
-                global_dspark_topk_lengths = F.pad(global_dspark_topk_lengths, (0, pad_rows), value=0)
+                global_dspark_topk_lengths = F.pad(global_dspark_topk_lengths, (0, 0, 0, pad_rows), value=0)
             dspark_swa_indices = global_dspark_indices[local_start:local_end_with_pad].contiguous()
             dspark_swa_topk_lengths = global_dspark_topk_lengths[local_start:local_end_with_pad].contiguous()
             ori_win_left, ori_win_right = get_dspark_sparse_sas_window(self.vllm_config)

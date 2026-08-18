@@ -296,7 +296,9 @@ def build_dspark_swa_indices(
     slot_ids = slot_ids.where(col_mask, torch.full_like(slot_ids, -1))
 
     per_token_slots = torch.repeat_interleave(slot_ids, query_lens, dim=0, output_size=num_decode_tokens).unsqueeze(1)
-    per_token_lens = torch.repeat_interleave(visible_lens, query_lens, dim=0, output_size=num_decode_tokens)
+    per_token_lens = torch.repeat_interleave(
+        visible_lens, query_lens, dim=0, output_size=num_decode_tokens
+    ).unsqueeze(1)
 
     return per_token_slots, per_token_lens
 
